@@ -10,31 +10,40 @@ const PORT = process.env.PORT || 3000;
 const client = new vision.ImageAnnotatorClient();
 
 app.post('/api/process-image', async (req, res) => {
-    const { imageData } = req.body; // Assume imageData is a Base64 encoded string
+    const { imageData } = req.body;
 
     try {
-        // Prepares the request for the Vision API
         const request = {
             image: { content: imageData },
-            features: [{type: "TEXT_DETECTION"}],
+            features: [{ type: "TEXT_DETECTION" }],
         };
 
-        // Detects text in the image
         const [result] = await client.textDetection(request);
-        const detections = result.textAnnotations;
-        console.log('Detected text:', detections[0] ? detections[0].description : 'No text found.');
+        if (!result || result.error) {
+            throw new Error(result.error ? result.error.message : "Unknown error during text detection.");
+        }
 
-        // Return the extracted text (and any other desired analysis results) to the client
+        const detections = result.textAnnotations;
         res.json({
             success: true,
-            extractedText: detections[0] ? detections[0].description : '',
+            extractedText: detections.length > 0 ? detections[0].description : 'No text found.'
         });
     } catch (error) {
-        console.error('Failed to process image:', error);
-        res.status(500).send('Error processing image data.');
-    }
-});
+        console.error('Error processing image:', error);
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+        // Specific error feedback based on common issues
+        let errorMessage = 'Error processing image data.';
+        if (error.message.includes('Image processing error')) {
+            errorMessage = 'The image could not be processed.';
+        } else if (error.message.includes('API not enabled')) {
+            errorMessage = 'The Vision API has not been enabled for this project.';
+        } else if (error.message.includes('permission denied')) {
+            errorMessage = 'Permission denied for accessing the Vision API.';
+        } else if (error.message.includes('invalid')) {
+            errorMessage = 'The provided image is invalid or in an unsupported format.';
+        }
+
+        // Send a detailed error message to the client
+        res.status(500).json({ error: true, message: errorMessage });
+    }
 });

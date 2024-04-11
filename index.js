@@ -1,49 +1,58 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const vision = require('@google-cloud/vision');
+const fetch = require('node-fetch');
 
 const app = express();
-app.use(bodyParser.json());
 const PORT = process.env.PORT || 3000;
 
-// Creates a client
-const client = new vision.ImageAnnotatorClient();
+app.use(bodyParser.json());
 
 app.post('/api/process-image', async (req, res) => {
-    const { imageData } = req.body;
+    const { imageData } = req.body; // Expect Base64 encoded image data from the client
+
+    const apiKey = 'AIzaSyAuzo1Gi9xUOJJ790SkMh-wveNqS0DoFUQ'; // Place your Google Cloud Vision API key here
+    const url = `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`;
+
+    const requestBody = {
+        requests: [
+            {
+                image: {
+                    content: imageData
+                },
+                features: [
+                    {
+                        type: 'TEXT_DETECTION'
+                    }
+                ]
+            }
+        ]
+    };
 
     try {
-        const request = {
-            image: { content: imageData },
-            features: [{ type: "TEXT_DETECTION" }],
-        };
-
-        const [result] = await client.textDetection(request);
-        if (!result || result.error) {
-            throw new Error(result.error ? result.error.message : "Unknown error during text detection.");
-        }
-
-        const detections = result.textAnnotations;
-        res.json({
-            success: true,
-            extractedText: detections.length > 0 ? detections[0].description : 'No text found.'
+        const visionResponse = await fetch(url, {
+            method: 'POST',
+            body: JSON.stringify(requestBody),
+            headers: { 'Content-Type': 'application/json' },
         });
-    } catch (error) {
-        console.error('Error processing image:', error);
 
-        // Specific error feedback based on common issues
-        let errorMessage = 'Error processing image data.';
-        if (error.message.includes('Image processing error')) {
-            errorMessage = 'The image could not be processed.';
-        } else if (error.message.includes('API not enabled')) {
-            errorMessage = 'The Vision API has not been enabled for this project.';
-        } else if (error.message.includes('permission denied')) {
-            errorMessage = 'Permission denied for accessing the Vision API.';
-        } else if (error.message.includes('invalid')) {
-            errorMessage = 'The provided image is invalid or in an unsupported format.';
+        if (!visionResponse.ok) {
+            throw new Error(`Vision API HTTP error! Status: ${visionResponse.status}`);
         }
 
-        // Send a detailed error message to the client
-        res.status(500).json({ error: true, message: errorMessage });
+        const visionData = await visionResponse.json();
+        console.log(visionData); // For debugging, shows in the server's console
+
+        // Extract and return the detected text
+        const detectedText = visionData.responses[0].textAnnotations
+            ? visionData.responses[0].textAnnotations[0].description
+            : 'No text detected.';
+        res.json({ success: true, detectedText: detectedText });
+    } catch (error) {
+        console.error('Error processing image with Vision API:', error);
+        res.status(500).json({ success: false, message: 'Failed to process image with Vision API.', error: error.message });
     }
+});
+
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 });

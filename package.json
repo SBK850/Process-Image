@@ -1,19 +1,16 @@
 {
   "name": "vision-api-integration",
   "version": "1.0.0",
-  "description": "A Node.js application that integrates with Google Cloud Vision API",
+  "description": "A simple Node.js application integrating with Google Cloud Vision API.",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
-  "engines": {
-    "node": "14.x"
-  },
-  "dependencies": {
-    "@google-cloud/vision": "^2.3.0",
-    "express": "^4.17.1",
-    "body-parser": "^1.19.0"
-  },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.1",
+    "node-fetch": "^2.6.1",
+    "body-parser": "^1.19.0"
+  }
 }

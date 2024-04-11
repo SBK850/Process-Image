@@ -1,34 +1,36 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-// const fetch = require('node-fetch'); // Uncomment if you're making external API calls
+const vision = require('@google-cloud/vision');
 
 const app = express();
+app.use(bodyParser.json());
 const PORT = process.env.PORT || 3000;
 
-app.use(bodyParser.json());
+// Creates a client
+const client = new vision.ImageAnnotatorClient();
 
-// Endpoint to process the image data
 app.post('/api/process-image', async (req, res) => {
     const { imageData } = req.body; // Assume imageData is a Base64 encoded string
 
-    // Here, you'd process the imageData, such as sending it to Google Vision API,
-    // and perform toxicity analysis. This is a placeholder response.
     try {
-        // Mock processing - replace this with actual API calls
-        const textExtractionSuccess = true; // Mock flag indicating successful text extraction
-        const mockTextToxicityPercentage = 15; // Mock toxicity analysis result
+        // Prepares the request for the Vision API
+        const request = {
+            image: { content: imageData },
+            features: [{type: "TEXT_DETECTION"}],
+        };
 
-        if (textExtractionSuccess) {
-            res.json({
-                success: true,
-                textToxicityPercentage: mockTextToxicityPercentage,
-                imageToxicityPercentage: mockTextToxicityPercentage // Mock data; use actual results
-            });
-        } else {
-            throw new Error('Failed to process image');
-        }
+        // Detects text in the image
+        const [result] = await client.textDetection(request);
+        const detections = result.textAnnotations;
+        console.log('Detected text:', detections[0] ? detections[0].description : 'No text found.');
+
+        // Return the extracted text (and any other desired analysis results) to the client
+        res.json({
+            success: true,
+            extractedText: detections[0] ? detections[0].description : '',
+        });
     } catch (error) {
-        console.error(error);
+        console.error('Failed to process image:', error);
         res.status(500).send('Error processing image data.');
     }
 });

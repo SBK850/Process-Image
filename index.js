@@ -1,16 +1,17 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const fetch = require('node-fetch');
+const cors = require('cors');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+const VISION_API_KEY = 'AIzaSyAuzo1Gi9xUOJJ790SkMh-wveNqS0DoFUQ';
 
+app.use(cors());
 app.use(bodyParser.json());
 
-const PORT = process.env.PORT || 3000;
-const VISION_API_KEY = 'AIzaSyAuzo1Gi9xUOJJ790SkMh-wveNqS0DoFUQ'; // Not recommended for production
-
 app.post('/api/process-image', async (req, res) => {
-    const { imageData } = req.body; // Expect Base64 encoded image data from the client
+    const { imageData } = req.body;
 
     const url = `https://vision.googleapis.com/v1/images:annotate?key=${VISION_API_KEY}`;
 
@@ -33,7 +34,6 @@ app.post('/api/process-image', async (req, res) => {
         });
 
         if (!visionResponse.ok) {
-            // Error details from the Vision API might be included in the response body
             const errorDetails = await visionResponse.json();
             throw new Error(`Vision API error: ${errorDetails.error.message}`);
         }
@@ -44,7 +44,7 @@ app.post('/api/process-image', async (req, res) => {
             throw new Error(`Vision API error: ${visionData.error.message}`);
         }
 
-        console.log('Vision API response:', visionData); // For debugging
+        console.log('Vision API response:', visionData);
 
         const detectedText = visionData.responses[0].textAnnotations
             ? visionData.responses[0].textAnnotations[0].description
